@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#12151b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EVA">
+    <title>E.V.A — Executive Mobility · Gestión de Estacionamientos</title>
+
+    <link rel="icon" type="image/svg+xml" href="/static/img/eva-mark.svg">
+    <link rel="apple-touch-icon" href="/static/img/eva-touch-icon.png">
+
+    <!-- Tipografías Ejecutivas Modernas (con fallback automático offline) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS para Mapa Interactivo OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <!-- ==================== NAVBAR EJECUTIVA EVA ==================== -->
+    <header class="navbar">
+        <div class="navbar-inner">
+            <a class="brand" onclick="EVA.switchView('explorer')">
+                <img src="/static/img/eva-mark.svg" alt="EVA Emblem" class="brand-emblem">
+                <div class="brand-text">
+                    <span class="brand-wordmark">EVA</span>
+                    <span class="brand-tagline">Executive Mobility</span>
+                </div>
+            </a>
+
+            <nav class="nav-links" id="nav-tabs"></nav>
+
+            <div class="nav-user-area" id="nav-user-area"></div>
+        </div>
+    </header>
+
+    <!-- ==================== CONTENEDOR PRINCIPAL ==================== -->
+    <main class="container">
+
+        <!-- Banner de diagnóstico si MySQL en XAMPP está detenido -->
+        <div id="db-alert-banner" class="alert-box alert-danger" style="display:none;"></div>
+
+        <!-- Telemetría global de estadía activa para el Conductor -->
+        <div id="global-active-stay-container"></div>
+
+        <!-- ==========================================================
+             VISTA 1: EXPLORADOR + HERO EJECUTIVO + MAPA (EP1)
+             ========================================================== -->
+        <section id="view-explorer" class="view-section active">
+
+            <div class="executive-hero">
+                <div>
+                    <div class="hero-eyebrow">
+                        <span>◆</span> E.V.A · Estacionamiento Virtual Automatizado
+                    </div>
+                    <h1>Movilidad ejecutiva y plazas en tiempo real</h1>
+                    <p>Explora estacionamientos afiliados en el mapa, visualiza cada bahía disponible en verde y abona sin demoras con débito automático desde tu Billetera Virtual.</p>
+                </div>
+
+                <div class="hero-metrics">
+                    <div class="hero-stat">
+                        <div class="hero-stat-val" id="hero-stat-parkings">0</div>
+                        <div class="hero-stat-lbl">Locales Activos</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-val" id="hero-stat-free" style="color:#34d399;">0</div>
+                        <div class="hero-stat-lbl">Plazas Libres</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-val" id="hero-stat-minprice">—</div>
+                        <div class="hero-stat-lbl">Desde / Hora</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buscador y Filtros (EP1-HU1 / EP1-HU2) -->
+            <div class="search-filter-bar">
+                <form id="search-form" onsubmit="EVA.handleSearchSubmit(event)" novalidate>
+                    <div class="search-row">
+                        <div class="search-input-wrap">
+                            <input type="text" id="filter-search" class="form-control" style="width:100%;"
+                                   placeholder="Buscar por nombre, calle o zona (ej: 25 de Mayo, UNSTA, Yerba Buena)...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Buscar Locales</button>
+                        <button type="button" class="btn btn-outline" onclick="EVA.resetSearchFilters()">Restablecer</button>
+                    </div>
+                    <div class="filters-row" id="advanced-filters-container"></div>
+                </form>
+            </div>
+
+            <!-- Mapa + Tarjetas de Locales Afiliados -->
+            <div class="explorer-grid">
+                <div class="map-card">
+                    <div id="parking-map"></div>
+                    <div class="map-footer">
+                        <span id="map-status-label">Red Geolocalizada E.V.A</span>
+                        <span>Toca un pin para abrir sus bahías en vivo</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div id="parking-list" class="parking-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+             VISTA 2: MIS ESTADÍAS E HISTORIAL (Conductor)
+             ========================================================== -->
+        <section id="view-stays" class="view-section">
+            <div class="section-header">
+                <div>
+                    <h2>Mis Estadías y Comprobantes</h2>
+                    <p>Monitorea tu tiempo y tarifa acumulada segundo a segundo, descarga tickets oficiales y califica tu experiencia.</p>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="EVA.loadMyStays()">Sincronizar</button>
+            </div>
+
+            <div id="my-active-stays-list" style="margin-bottom:1.5rem;"></div>
+
+            <div class="card">
+                <h3 style="margin-bottom:0.9rem;">Historial de Estadías Finalizadas</h3>
+                <div class="table-wrap" id="my-history-table-wrap"></div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+             VISTA 3: MIS VEHÍCULOS (Conductor)
+             ========================================================== -->
+        <section id="view-vehicles" class="view-section">
+            <div class="section-header">
+                <div>
+                    <h2>Flota Personal de Vehículos</h2>
+                    <p>Asocia múltiples vehículos por categoría y patente para iniciar el estacionamiento en un toque.</p>
+                </div>
+            </div>
+
+            <div class="explorer-grid" style="grid-template-columns: 0.88fr 1.12fr;">
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Registrar Nuevo Vehículo</h3>
+                    <form id="vehicle-form" onsubmit="EVA.handleCreateVehicle(event)" novalidate>
+                        <div class="form-group">
+                            <label for="veh-tipo">Categoría de Vehículo *</label>
+                            <select id="veh-tipo" class="form-control" required></select>
+                            <div class="field-error" id="err-veh-tipo"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="veh-patente">Placa / Patente *</label>
+                            <input type="text" id="veh-patente" class="form-control" maxlength="10"
+                                   placeholder="Ej: AF420TK o ABC123" style="text-transform:uppercase; font-family:'JetBrains Mono', monospace; font-weight:700;">
+                            <div class="field-error" id="err-veh-patente"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="veh-desc">Marca, Modelo y Color (opcional)</label>
+                            <input type="text" id="veh-desc" class="form-control" maxlength="90"
+                                   placeholder="Ej: Toyota Corolla Blanco Perlado">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Registrar en mi Cuenta</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Vehículos Habilitados</h3>
+                    <div id="my-vehicles-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+             VISTA 4: BILLETERA VIRTUAL EJECUTIVA (Conductor / Propietario)
+             ========================================================== -->
+        <section id="view-wallet" class="view-section">
+            <div class="section-header">
+                <div>
+                    <h2>Billetera Virtual E.V.A</h2>
+                    <p>Gestión instantánea de fondos con débito automático y liberación inmediata de plaza al finalizar tu estadía.</p>
+                </div>
+            </div>
+
+            <div class="explorer-grid" style="grid-template-columns: 0.92fr 1.08fr;">
+                <div>
+                    <!-- Tarjeta Digital Black & Gold EVA -->
+                    <div class="executive-wallet-card">
+                        <div class="wallet-card-top">
+                            <span class="wallet-card-brand">EVA · EXECUTIVE WALLET</span>
+                            <img src="/static/img/eva-mark.svg" alt="EVA" style="width:34px; height:36px;">
+                        </div>
+                        <div style="font-size:0.74rem; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.08em;">
+                            Saldo Disponible
+                        </div>
+                        <div class="wallet-card-balance" id="wallet-balance-big">$0.00</div>
+                        <div class="wallet-card-footer">
+                            <span id="wallet-holder-name">Titular EVA</span>
+                            <span id="wallet-holder-role" style="color:var(--gold-400); font-weight:700;">CUENTA VERIFICADA</span>
+                        </div>
+                    </div>
+
+                    <div class="card" id="wallet-deposit-panel">
+                        <h3 style="font-size:1.02rem; margin-bottom:0.65rem;">Acreditar Fondos al Instante</h3>
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-bottom:0.9rem;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="EVA.setQuickDeposit(2000)">+$2,000</button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="EVA.setQuickDeposit(5000)">+$5,000</button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="EVA.setQuickDeposit(10000)">+$10,000</button>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="EVA.setQuickDeposit(20000)">+$20,000</button>
+                        </div>
+
+                        <form id="wallet-form" onsubmit="EVA.handleWalletDeposit(event)" novalidate>
+                            <div class="form-group">
+                                <label for="wallet-amount">Importe a Depositar ($) *</label>
+                                <input type="number" step="0.01" id="wallet-amount" class="form-control" placeholder="Mínimo $100.00">
+                                <div class="field-error" id="err-wallet-amount"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="wallet-method">Medio de Acreditación</label>
+                                <select id="wallet-method" class="form-control">
+                                    <option value="Transferencia Inmediata (CVU/Alias)">Transferencia Inmediata (CVU / Alias)</option>
+                                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                                    <option value="Tarjeta de Crédito Ejecutiva">Tarjeta de Crédito Ejecutiva</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width:100%;">Confirmar Depósito</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Libro Mayor de Movimientos</h3>
+                    <div class="table-wrap" id="wallet-movements-wrap"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+             VISTA 5: PANEL DEL PROPIETARIO (Grilla Estilo Restaurante)
+             ========================================================== -->
+        <section id="view-owner" class="view-section">
+            <div class="section-header">
+                <div>
+                    <h2 id="owner-parking-title">Consola Operativa del Propietario</h2>
+                    <p>Monitoreo de bahías en vivo (Verde = Disponible / Rojo = Ocupada), control de mostrador, capacidad y cuadro tarifario.</p>
+                </div>
+                <button class="btn btn-dark btn-sm" onclick="EVA.loadOwnerDashboard()">Sincronizar Consola</button>
+            </div>
+
+            <div class="kpi-grid" id="owner-kpis"></div>
+
+            <!-- Grilla Estilo Restaurante en Vivo -->
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.9rem;">
+                    <h3>Plano Operativo de Plazas en Tiempo Real</h3>
+                    <span style="font-size:0.8rem; color:var(--text-muted);">Selecciona una bahía <strong>Verde</strong> para registrar un ingreso presencial en mostrador</span>
+                </div>
+
+                <div class="legend-bar">
+                    <div class="legend-items">
+                        <span><i class="legend-dot free"></i>DESOCUPADO (Verde) — Libre para ocupar</span>
+                        <span><i class="legend-dot busy"></i>OCUPADO (Rojo) — Cronómetro y tarifa corriendo en vivo</span>
+                    </div>
+                    <span style="font-size:0.75rem; color:var(--gold-400);">ACTUALIZACIÓN AUTOMÁTICA</span>
+                </div>
+
+                <div id="owner-spots-grid" class="restaurant-grid"></div>
+            </div>
+
+            <!-- Configuración de Capacidad y Tarifas -->
+            <div class="explorer-grid" style="margin-bottom:1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Configuración del Local y Capacidad de Plazas</h3>
+                    <form id="owner-config-form" onsubmit="EVA.handleSaveOwnerParking(event)" novalidate>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="own-nombre">Nombre del Estacionamiento *</label>
+                                <input type="text" id="own-nombre" class="form-control">
+                                <div class="field-error" id="err-own-nombre"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="own-plazas">Cantidad Total de Plazas (1–200) *</label>
+                                <input type="number" id="own-plazas" class="form-control" min="1" max="200">
+                                <div class="field-error" id="err-own-plazas"></div>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="own-direccion">Dirección *</label>
+                                <input type="text" id="own-direccion" class="form-control">
+                                <div class="field-error" id="err-own-direccion"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="own-ciudad">Ciudad *</label>
+                                <input type="text" id="own-ciudad" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="own-lat">Latitud (Mapa)</label>
+                                <input type="number" step="0.0000001" id="own-lat" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="own-lng">Longitud (Mapa)</label>
+                                <input type="number" step="0.0000001" id="own-lng" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="own-horario">Horario de Operación</label>
+                                <input type="text" id="own-horario" class="form-control" placeholder="Ej: 24 Horas">
+                            </div>
+                            <div class="form-group" style="justify-content:center;">
+                                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; margin-top:1.1rem; font-weight:700;">
+                                    <input type="checkbox" id="own-techado"> Cobertura Techada
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Datos y Ajustar Plazas</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom:0.35rem;">Cuadro Tarifario por Tipo de Vehículo</h3>
+                    <p style="font-size:0.83rem; color:var(--text-muted); margin-bottom:0.9rem;">
+                        Configura la tarifa Por Hora (mín. 1h + fracción por minuto) y la tarifa por Estadía Fija.
+                    </p>
+                    <form id="owner-tariffs-form" onsubmit="EVA.handleSaveOwnerTariffs(event)" novalidate>
+                        <div class="table-wrap" id="owner-tariffs-table-wrap"></div>
+                        <div class="field-error" id="err-owner-tariffs" style="margin-top:0.5rem;"></div>
+                        <button type="submit" class="btn btn-primary" style="margin-top:0.85rem;">Guardar Cuadro Tarifario</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Actividad Reciente del Estacionamiento -->
+            <div class="card">
+                <h3 style="margin-bottom:0.9rem;">Bitácora de Estadías y Tickets Emitidos</h3>
+                <div class="table-wrap" id="owner-recent-stays-wrap"></div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+             VISTA 6: PANEL DEL ADMINISTRADOR GLOBAL
+             ========================================================== -->
+        <section id="view-admin" class="view-section">
+            <div class="section-header">
+                <div>
+                    <h2>Dirección Global de la Red E.V.A</h2>
+                    <p>Supervisión integral de indicadores, usuarios, estacionamientos afiliados y categorías vehiculares.</p>
+                </div>
+                <button class="btn btn-dark btn-sm" onclick="EVA.loadAdminDashboard()">Actualizar Red</button>
+            </div>
+
+            <div class="kpi-grid" id="admin-kpis"></div>
+
+            <div class="card" style="margin-bottom:1.5rem;">
+                <h3 style="margin-bottom:0.9rem;">Estacionamientos Afiliados</h3>
+                <div class="table-wrap" id="admin-parkings-wrap"></div>
+            </div>
+
+            <div class="explorer-grid" style="grid-template-columns: 1.2fr 0.8fr;">
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Directorio de Usuarios y Roles</h3>
+                    <div class="table-wrap" id="admin-users-wrap"></div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom:0.9rem;">Catálogo Maestro de Vehículos</h3>
+                    <form id="admin-vtype-form" onsubmit="EVA.handleCreateVehicleType(event)" novalidate style="margin-bottom:1rem;">
+                        <div class="form-group">
+                            <label for="adm-vt-nombre">Nueva Categoría *</label>
+                            <input type="text" id="adm-vt-nombre" class="form-control" placeholder="Ej: SUV Eléctrico o Minibús">
+                            <div class="field-error" id="err-adm-vt-nombre"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="adm-vt-desc">Descripción</label>
+                            <input type="text" id="adm-vt-desc" class="form-control" placeholder="Descripción breve">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Añadir Categoría</button>
+                    </form>
+                    <div class="table-wrap" id="admin-vtypes-wrap"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==============================================================
+         MODAL 1: LOGIN Y REGISTRO CON LOGO OFICIAL EVA (EP2)
+         ============================================================== -->
+    <div id="modal-auth" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="auth-modal-title">Acceso E.V.A Executive Mobility</h3>
+                <button class="modal-close" onclick="EVA.closeModal('modal-auth')">&times;</button>
+            </div>
+
+            <div class="auth-logo-showcase">
+                <img src="/static/img/eva-logo-full.png" alt="Logo Oficial EVA Executive Mobility">
+            </div>
+
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button type="button" id="tab-btn-login" class="btn btn-primary" style="flex:1;" onclick="EVA.switchAuthTab('login')">Iniciar Sesión</button>
+                <button type="button" id="tab-btn-register" class="btn btn-outline" style="flex:1;" onclick="EVA.switchAuthTab('register')">Crear Cuenta</button>
+            </div>
+
+            <!-- Formulario Login -->
+            <form id="login-form" onsubmit="EVA.handleLogin(event)" novalidate>
+                <div class="form-group">
+                    <label for="login-email">Correo Electrónico *</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="tu@correo.com">
+                    <div class="field-error" id="err-login-email"></div>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña *</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••">
+                    <div class="field-error" id="err-login-password"></div>
+                </div>
+                <div class="field-error" id="err-login-general" style="margin-bottom:0.5rem;"></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Ingresar a mi Cuenta</button>
+
+                <!-- Accesos rápidos para la demo en vivo (UNSTA TP5) -->
+                <div class="demo-accounts-box">
+                    <div style="font-size:0.74rem; font-weight:800; color:var(--text-muted); letter-spacing:0.03em;">
+                        PERFILES DEMO RÁPIDOS (Clave: eva1234)
+                    </div>
+                    <div class="demo-pills">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="EVA.fillDemoLogin('juan.conductor@eva.com')">Conductor (Con Saldo)</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="EVA.fillDemoLogin('sofia.conductora@eva.com')">Conductora (Saldo Bajo)</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="EVA.fillDemoLogin('carlos.dueno@eva.com')">Propietario Local</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="EVA.fillDemoLogin('admin@eva.com')">Administrador</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Formulario Registro -->
+            <form id="register-form" onsubmit="EVA.handleRegister(event)" novalidate style="display:none;">
+                <div class="form-group">
+                    <label for="reg-rol">Perfil de Cuenta *</label>
+                    <select id="reg-rol" class="form-control" onchange="EVA.toggleOwnerRegisterFields()">
+                        <option value="USUARIO">Conductor (Estacionar, gestionar vehículos y billetera)</option>
+                        <option value="PROPIETARIO">Propietario de Estacionamiento (Gestionar mi local 1 a 1)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-nombre">Nombre y Apellido *</label>
+                    <input type="text" id="reg-nombre" class="form-control" placeholder="Ej: Belisario Iturbe">
+                    <div class="field-error" id="err-reg-nombre"></div>
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Correo Electrónico *</label>
+                    <input type="email" id="reg-email" class="form-control" placeholder="correo@ejemplo.com">
+                    <div class="field-error" id="err-reg-email"></div>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Contraseña (mín. 6 caracteres) *</label>
+                    <input type="password" id="reg-password" class="form-control" placeholder="Mínimo 6 caracteres">
+                    <div class="field-error" id="err-reg-password"></div>
+                </div>
+
+                <!-- Campos adicionales si elige Propietario (Relación 1 a 1) -->
+                <div id="owner-register-fields" style="display:none; background:var(--bg-champagne); padding:0.9rem; border-radius:10px; border:1px solid rgba(221, 160, 10, 0.4); margin-bottom:0.9rem;">
+                    <div style="font-size:0.76rem; font-weight:800; color:var(--gold-700); margin-bottom:0.6rem;">
+                        CONFIGURACIÓN INICIAL DE TU ESTACIONAMIENTO
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-est-nombre">Nombre Comercial *</label>
+                        <input type="text" id="reg-est-nombre" class="form-control" placeholder="Ej: Executive Parking Norte">
+                        <div class="field-error" id="err-reg-est-nombre"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-est-dir">Dirección *</label>
+                        <input type="text" id="reg-est-dir" class="form-control" placeholder="Ej: Muñecas 450">
+                        <div class="field-error" id="err-reg-est-dir"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="reg-est-ciudad">Ciudad</label>
+                            <input type="text" id="reg-est-ciudad" class="form-control" value="San Miguel de Tucumán">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-est-plazas">Total de Plazas *</label>
+                            <input type="number" id="reg-est-plazas" class="form-control" value="10" min="1" max="200">
+                            <div class="field-error" id="err-reg-est-plazas"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field-error" id="err-reg-general" style="margin-bottom:0.5rem;"></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Registrarme e Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         MODAL 2: GRILLA EN TIEMPO REAL DE UN ESTACIONAMIENTO + CHECK-IN
+         ============================================================== -->
+    <div id="modal-parking-detail" class="modal-backdrop">
+        <div class="modal-box modal-xl">
+            <div class="modal-header">
+                <div>
+                    <h3 id="detail-modal-title">Detalle de Estacionamiento</h3>
+                    <div id="detail-modal-subtitle" style="font-size:0.84rem; color:var(--text-muted);"></div>
+                </div>
+                <button class="modal-close" onclick="EVA.closeModal('modal-parking-detail')">&times;</button>
+            </div>
+
+            <div id="detail-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         MODAL 3: INGRESO MANUAL EN MOSTRADOR (Propietario)
+         ============================================================== -->
+    <div id="modal-manual-checkin" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="manual-modal-title">Ingreso Presencial en Mostrador</h3>
+                <button class="modal-close" onclick="EVA.closeModal('modal-manual-checkin')">&times;</button>
+            </div>
+
+            <form id="manual-checkin-form" onsubmit="EVA.handleManualDeskCheckin(event)" novalidate>
+                <input type="hidden" id="manual-plaza-id">
+                <div class="form-group">
+                    <label for="manual-patente">Patente del Vehículo *</label>
+                    <input type="text" id="manual-patente" class="form-control" maxlength="10"
+                           placeholder="Ej: AB987CD" style="text-transform:uppercase; font-family:'JetBrains Mono', monospace; font-weight:700;">
+                    <div class="field-error" id="err-manual-patente"></div>
+                </div>
+                <div class="form-group">
+                    <label for="manual-tipo">Categoría de Vehículo *</label>
+                    <select id="manual-tipo" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label for="manual-modalidad">Modalidad de Tarifa *</label>
+                    <select id="manual-modalidad" class="form-control">
+                        <option value="HORA">Por Hora (1h mínima + proporcional por minuto)</option>
+                        <option value="ESTADIA_FIJA">Estadía Fija</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manual-cliente">Nombre / Referencia Cliente (opcional)</label>
+                    <input type="text" id="manual-cliente" class="form-control" placeholder="Cliente Mostrador">
+                </div>
+                <div class="field-error" id="err-manual-general" style="margin-bottom:0.5rem;"></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Ocupar Bahía e Iniciar Cronómetro</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         MODAL 4: CONFIRMACIÓN DE PAGO, TICKET Y RESEÑA (EP4 + EP5)
+         ============================================================== -->
+    <div id="modal-post-checkout" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Operación Confirmada y Plaza Liberada</h3>
+                <button class="modal-close" onclick="EVA.closeModal('modal-post-checkout')">&times;</button>
+            </div>
+            <div id="post-checkout-body"></div>
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         MODAL 5: ACCESO DESDE CELULAR, TABLET Y OTROS DISPOSITIVOS (QR)
+         ============================================================== -->
+    <div id="modal-device-access" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Abrir E.V.A en tu Celular u Otros Dispositivos</h3>
+                <button class="modal-close" onclick="EVA.closeModal('modal-device-access')">&times;</button>
+            </div>
+            <div id="device-access-body"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Leaflet JS + Lógica de Presentación E.V.A -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

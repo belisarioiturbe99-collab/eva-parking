@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 108" fill="none">
+  <defs>
+    <linearGradient id="evaGoldBorder" x1="12" y1="8" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D99B08"/>
+      <stop offset="35%" stop-color="#F6BE18"/>
+      <stop offset="72%" stop-color="#8A5E06"/>
+      <stop offset="100%" stop-color="#231905"/>
+    </linearGradient>
+    <linearGradient id="evaGoldP" x1="30" y1="28" x2="72" y2="66" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#DDA00A"/>
+      <stop offset="45%" stop-color="#F4BC1C"/>
+      <stop offset="100%" stop-color="#6B4A06"/>
+    </linearGradient>
+    <linearGradient id="evaPinTip" x1="50" y1="86" x2="50" y2="103" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F6C21F"/>
+      <stop offset="100%" stop-color="#7B5606"/>
+    </linearGradient>
+  </defs>
+  <!-- Marco Pin Cuadrado Redondeado -->
+  <rect x="11" y="7" width="78" height="78" rx="22" fill="#FFFFFF" stroke="url(#evaGoldBorder)" stroke-width="5.5"/>
+  <!-- Punta Inferior del Pin -->
+  <path d="M40 87.5 L60 87.5 L50 102 Z" fill="url(#evaPinTip)"/>
+  <!-- Letra P Dorada (Silueta Exterior Vehículo) -->
+  <path d="M33 67 V30 H53.5 C63.5 30 70 36.2 70 45 C70 53.8 63.5 60 53.5 60 H33"
+        stroke="url(#evaGoldP)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arco de Techo Ejecutivo -->
+  <path d="M41.5 45.5 C46 37.5 54 36 61.5 38.5"
+        stroke="#16181D" stroke-width="3.8" stroke-linecap="round"/>
+  <!-- Ruedas Minimalistas -->
+  <circle cx="46.5" cy="60" r="4.7" fill="#FFFFFF" stroke="#16181D" stroke-width="3.2"/>
+  <circle cx="60.5" cy="60" r="4.7" fill="#FFFFFF" stroke="#16181D" stroke-width="3.2"/>
+</svg>

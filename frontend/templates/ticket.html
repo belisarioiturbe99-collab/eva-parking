@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprobante E.V.A {{ '- ' + comprobante.numero_ticket if comprobante else '' }}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/eva-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f4f4f1;
+            color: #111317;
+            padding: 2rem 1rem;
+        }
+        .ticket-card {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #e4e4df;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 18px 40px rgba(12, 14, 18, 0.12);
+        }
+        .ticket-banner {
+            background: linear-gradient(135deg, #0c0e12 0%, #1c2029 100%);
+            color: #ffffff;
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 2px solid #dda00a;
+        }
+        .ticket-banner img {
+            width: 54px;
+            height: 58px;
+            margin-bottom: 0.45rem;
+        }
+        .wordmark {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: 0.24em;
+            color: #f5c227;
+        }
+        .tagline {
+            font-family: 'Cinzel', Georgia, serif;
+            font-size: 0.62rem;
+            letter-spacing: 0.24em;
+            color: #cbd5e1;
+            margin-top: 0.15rem;
+        }
+        .ticket-num {
+            display: inline-block;
+            margin-top: 0.75rem;
+            background: rgba(245, 194, 39, 0.14);
+            border: 1px solid rgba(245, 194, 39, 0.4);
+            color: #fae084;
+            padding: 0.25rem 0.8rem;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+        .ticket-body {
+            padding: 1.5rem 1.75rem 1.75rem;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.48rem 0;
+            font-size: 0.88rem;
+            border-bottom: 1px solid #f1f1ed;
+        }
+        .row span:first-child {
+            color: #6b7280;
+        }
+        .row strong {
+            text-align: right;
+        }
+        .plate-pill {
+            font-family: 'JetBrains Mono', monospace;
+            background: #f8fafc;
+            border: 1px solid #1e293b;
+            padding: 0.1rem 0.45rem;
+            border-radius: 5px;
+        }
+        .total-box {
+            margin-top: 1.1rem;
+            padding: 1rem 1.1rem;
+            background: #fdf8eb;
+            border: 1px solid rgba(221, 160, 10, 0.45);
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.18rem;
+            font-weight: 800;
+        }
+        .actions {
+            margin-top: 1.4rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.65rem 1.15rem;
+            border-radius: 10px;
+            border: 1px solid #d1d1ca;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.86rem;
+            background: #fff;
+            color: #111317;
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #f6c428 0%, #d99b08 60%, #8c5f05 100%);
+            border-color: #b88105;
+            color: #111317;
+        }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .ticket-card { box-shadow: none; border: 1px solid #000; }
+            .actions { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-card">
+        <div class="ticket-banner">
+            <img src="/static/img/eva-mark.svg" alt="EVA Logo">
+            <div class="wordmark">E V A</div>
+            <div class="tagline">EXECUTIVE MOBILITY</div>
+            {% if comprobante %}
+                <div class="ticket-num">{{ comprobante.numero_ticket }}</div>
+            {% endif %}
+        </div>
+
+        <div class="ticket-body">
+            {% if error %}
+                <h3 style="text-align:center; margin-bottom:0.5rem;">Comprobante no disponible</h3>
+                <p style="color:#dc2626; text-align:center;">{{ error }}</p>
+                <div class="actions">
+                    <a href="/" class="btn">Volver a E.V.A</a>
+                </div>
+            {% else %}
+                <div style="text-align:center; font-size:0.78rem; color:#6b7280; margin-bottom:0.9rem;">
+                    Comprobante Digital de Estadía · Emitido el {{ comprobante.emitido_en }}
+                </div>
+
+                <div class="row"><span>Estacionamiento</span><strong>{{ comprobante.estacionamiento_nombre }}</strong></div>
+                <div class="row"><span>Ubicación</span><strong>{{ comprobante.estacionamiento_direccion }}, {{ comprobante.estacionamiento_ciudad }}</strong></div>
+                <div class="row"><span>Titular Afiliado</span><strong>{{ comprobante.propietario_nombre }}</strong></div>
+                <div class="row"><span>Bahía / Plaza</span><strong>{{ comprobante.plaza_codigo }}</strong></div>
+                <div class="row"><span>Cliente</span><strong>{{ comprobante.nombre_cliente_snapshot or 'Conductor EVA' }}</strong></div>
+                <div class="row"><span>Vehículo</span><strong>{{ comprobante.tipo_vehiculo_nombre }} · <span class="plate-pill">{{ comprobante.patente_snapshot }}</span></strong></div>
+                <div class="row"><span>Modalidad</span><strong>{{ 'Por Hora (1h mín + prop.)' if comprobante.modalidad == 'HORA' else 'Estadía Fija Ejecutiva' }}</strong></div>
+                <div class="row"><span>Tarifa Base</span><strong>${{ "%.2f"|format(comprobante.tarifa_aplicada) }}</strong></div>
+                <div class="row"><span>Hora de Ingreso</span><strong>{{ comprobante.fecha_ingreso }}</strong></div>
+                <div class="row"><span>Hora de Salida</span><strong>{{ comprobante.fecha_salida }}</strong></div>
+                <div class="row"><span>Tiempo Computado</span><strong>{{ comprobante.minutos_transcurridos }} min</strong></div>
+                <div class="row"><span>Medio de Pago</span><strong>{{ 'Billetera Virtual EVA' if comprobante.metodo_pago == 'BILLETERA_VIRTUAL' else 'Efectivo en Mostrador' }}</strong></div>
+
+                <div class="total-box">
+                    <span>TOTAL ABONADO</span>
+                    <span style="color:#059669;">${{ "%.2f"|format(comprobante.monto_pagado) }}</span>
+                </div>
+
+                <p style="text-align:center; font-size:0.74rem; color:#6b7280; margin-top:1rem;">
+                    E.V.A Executive Mobility · Operación registrada y auditada con liberación automática de plaza.
+                </p>
+
+                <div class="actions">
+                    <button class="btn btn-gold" onclick="window.print()">Imprimir / Guardar PDF</button>
+                    <a href="/" class="btn">Volver a E.V.A</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
